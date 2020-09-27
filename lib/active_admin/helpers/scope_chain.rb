@@ -1,5 +1,6 @@
 module ActiveAdmin
   module ScopeChain
+    private
     # Scope an ActiveRecord::Relation chain
     #
     # Example:
@@ -12,7 +13,7 @@ module ActiveAdmin
     #
     def scope_chain(scope, chain)
       if scope.scope_method
-        chain.send(scope.scope_method)
+        chain.public_send scope.scope_method
       elsif scope.scope_block
         instance_exec chain, &scope.scope_block
       else

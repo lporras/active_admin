@@ -2,12 +2,12 @@ module ActiveAdmin
   module Views
     module Pages
 
-      # Acts as a standard rails Layout for use when logged
+      # Acts as a standard Rails Layout for use when logged
       # out or when rendering custom actions.
       class Layout < Base
 
         def title
-          assigns[:page_title] || I18n.t("active_admin.#{params[:action]}", :default => params[:action].to_s.titleize)
+          assigns[:page_title] || I18n.t("active_admin.#{params[:action]}", default: params[:action].to_s.titleize)
         end
 
         # Render the content_for(:layout) into the main content area

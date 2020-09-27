@@ -1,23 +1,61 @@
-# encoding: utf-8
+require "rails_helper"
 
-require 'spec_helper'
-
-describe ActiveAdmin, "Routing", :type => :routing do
-
-  before do
-    load_defaults!
-    reload_routes!
-  end
+RSpec.describe "Routing", type: :routing do
+  let(:namespaces) { ActiveAdmin.application.namespaces }
 
   it "should only have the namespaces necessary for route testing" do
-    ActiveAdmin.application.namespaces.keys.should eq [:admin, :root]
+    expect(namespaces.names).to eq [:admin]
   end
 
-  it "should route to the admin dashboard" do
-    expect(get('/admin')).to route_to 'admin/dashboard#index'
+  describe "admin dashboard" do
+    around do |example|
+      with_resources_during(example) {}
+    end
+
+    it "should route to the admin dashboard" do
+      expect(get("/admin")).to route_to "admin/dashboard#index"
+    end
+  end
+
+  describe "root path helper" do
+    around do |example|
+      with_resources_during(example) {}
+    end
+
+    context "when in admin namespace" do
+      it "should be admin_root_path" do
+        expect(admin_root_path).to eq "/admin"
+      end
+    end
+  end
+
+  describe "route_options" do
+    around do |example|
+      with_resources_during(example) { ActiveAdmin.register(Post) }
+    end
+
+    context "with a custom path set in route_options" do
+      before do
+        namespaces[:admin].route_options = { path: "/custom-path" }
+        reload_routes!
+      end
+
+      after do
+        namespaces[:admin].route_options = {}
+        reload_routes!
+      end
+
+      it "should route using the custom path" do
+        expect(admin_posts_path).to eq "/custom-path/posts"
+      end
+    end
   end
 
   describe "standard resources" do
+    around do |example|
+      with_resources_during(example) { ActiveAdmin.register(Post) }
+    end
+
     context "when in admin namespace" do
       it "should route the index path" do
         expect(admin_posts_path).to eq "/admin/posts"
@@ -37,8 +75,12 @@ describe ActiveAdmin, "Routing", :type => :routing do
     end
 
     context "when in root namespace" do
-      before(:each) do
-        load_resources { ActiveAdmin.register(Post, :namespace => false) }
+      around do |example|
+        with_resources_during(example) { ActiveAdmin.register(Post, namespace: false) }
+      end
+
+      after do
+        namespaces.instance_variable_get(:@namespaces).delete(:root)
       end
 
       it "should route the index path" do
@@ -60,55 +102,62 @@ describe ActiveAdmin, "Routing", :type => :routing do
 
     context "with member action" do
       context "without an http verb" do
-        before do
-          load_resources do
-            ActiveAdmin.register(Post){ member_action "do_something" }
+        around do |example|
+          with_resources_during(example) do
+            ActiveAdmin.register(Post) { member_action "do_something" }
           end
         end
 
         it "should default to GET" do
-          expect({:get  => "/admin/posts/1/do_something"}).to     be_routable
-          expect({:post => "/admin/posts/1/do_something"}).to_not be_routable
+          expect({ get: "/admin/posts/1/do_something" }).to be_routable
+          expect({ post: "/admin/posts/1/do_something" }).to_not be_routable
         end
       end
 
       context "with one http verb" do
-        before do
-          load_resources do
-            ActiveAdmin.register(Post){ member_action "do_something", :method => :post }
+        around do |example|
+          with_resources_during(example) do
+            ActiveAdmin.register(Post) { member_action "do_something", method: :post }
           end
         end
 
         it "should properly route" do
-          expect({:post => "/admin/posts/1/do_something"}).to be_routable
+          expect({ post: "/admin/posts/1/do_something" }).to be_routable
         end
       end
 
       context "with two http verbs" do
-        before do
-          load_resources do
-            ActiveAdmin.register(Post){ member_action "do_something", :method => [:put, :delete] }
+        around do |example|
+          with_resources_during(example) do
+            ActiveAdmin.register(Post) { member_action "do_something", method: [:put, :delete] }
           end
         end
 
         it "should properly route the first verb" do
-          expect({:put => "/admin/posts/1/do_something"}).to be_routable
+          expect({ put: "/admin/posts/1/do_something" }).to be_routable
         end
 
         it "should properly route the second verb" do
-          expect({:delete => "/admin/posts/1/do_something"}).to be_routable
+          expect({ delete: "/admin/posts/1/do_something" }).to be_routable
         end
       end
     end
   end
 
   describe "belongs to resource" do
+    around do |example|
+      with_resources_during(example) do
+        ActiveAdmin.register(User)
+        ActiveAdmin.register(Post) { belongs_to :user, optional: true }
+      end
+    end
+
     it "should route the nested index path" do
       expect(admin_user_posts_path(1)).to eq "/admin/users/1/posts"
     end
 
     it "should route the nested show path" do
-      expect(admin_user_post_path(1,2)).to eq "/admin/users/1/posts/2"
+      expect(admin_user_post_path(1, 2)).to eq "/admin/users/1/posts/2"
     end
 
     it "should route the nested new path" do
@@ -116,14 +165,14 @@ describe ActiveAdmin, "Routing", :type => :routing do
     end
 
     it "should route the nested edit path" do
-      expect(edit_admin_user_post_path(1,2)).to eq "/admin/users/1/posts/2/edit"
+      expect(edit_admin_user_post_path(1, 2)).to eq "/admin/users/1/posts/2/edit"
     end
 
     context "with collection action" do
-      before do
-        load_resources do
+      around do |example|
+        with_resources_during(example) do
           ActiveAdmin.register(Post) do
-            belongs_to :user, :optional => true
+            belongs_to :user, optional: true
           end
           ActiveAdmin.register(User) do
             collection_action "do_something"
@@ -133,39 +182,43 @@ describe ActiveAdmin, "Routing", :type => :routing do
 
       it "should properly route the collection action" do
         expect({ get: "/admin/users/do_something" }).to \
-          route_to({ controller: 'admin/users', action: 'do_something'})
+          route_to({ controller: "admin/users", action: "do_something" })
       end
     end
   end
 
   describe "page" do
     context "when default namespace" do
-      before(:each) do
-        load_resources { ActiveAdmin.register_page("Chocolate I lØve You!") }
+      around do |example|
+        with_resources_during(example) { ActiveAdmin.register_page("Chocolate I lØve You!") }
       end
 
       it "should route to the page under /admin" do
         expect(admin_chocolate_i_love_you_path).to eq "/admin/chocolate_i_love_you"
       end
+    end
 
-      context "when in the root namespace" do
-        before(:each) do
-          load_resources { ActiveAdmin.register_page("Chocolate I lØve You!", :namespace => false) }
-        end
-
-        it "should route to page under /" do
-          expect(chocolate_i_love_you_path).to eq "/chocolate_i_love_you"
-        end
+    context "when in the root namespace" do
+      around do |example|
+        with_resources_during(example) { ActiveAdmin.register_page("Chocolate I lØve You!", namespace: false) }
       end
 
-      context "when singular page name" do
-        before(:each) do
-          load_resources { ActiveAdmin.register_page("Log") }
-        end
+      after do
+        namespaces.instance_variable_get(:@namespaces).delete(:root)
+      end
 
-        it "should not inject _index_ into the route name" do
-          expect(admin_log_path).to eq "/admin/log"
-        end
+      it "should route to page under /" do
+        expect(chocolate_i_love_you_path).to eq "/chocolate_i_love_you"
+      end
+    end
+
+    context "when singular page name" do
+      around do |example|
+        with_resources_during(example) { ActiveAdmin.register_page("Log") }
+      end
+
+      it "should not inject _index_ into the route name" do
+        expect(admin_log_path).to eq "/admin/log"
       end
     end
   end

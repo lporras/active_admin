@@ -5,8 +5,11 @@ module ActiveAdmin
       class Form < Base
 
         def title
-          assigns[:page_title] || I18n.t("active_admin.#{params[:action]}_model",
-                                         model: active_admin_config.resource_label)
+          if form_presenter[:title]
+            helpers.render_or_call_method_or_proc_on(resource, form_presenter[:title])
+          else
+            assigns[:page_title] || ActiveAdmin::Localizers.resource(active_admin_config).t("#{normalized_action}_model")
+          end
         end
 
         def form_presenter
@@ -19,9 +22,7 @@ module ActiveAdmin
           if options[:partial]
             render options[:partial]
           else
-            active_admin_form_for resource, options do |f|
-              instance_exec f, &form_presenter.block
-            end
+            active_admin_form_for resource, options, &form_presenter.block
           end
         end
 
@@ -29,8 +30,8 @@ module ActiveAdmin
 
         def default_form_options
           {
-            :url => default_form_path,
-            :as => active_admin_config.resource_name.singular
+            url: default_form_path,
+            as: active_admin_config.param_key
           }
         end
 
@@ -40,8 +41,20 @@ module ActiveAdmin
 
         def default_form_config
           ActiveAdmin::PagePresenter.new do |f|
+            f.semantic_errors # show errors on :base by default
             f.inputs
             f.actions
+          end
+        end
+
+        def normalized_action
+          case params[:action]
+          when "create"
+            "new"
+          when "update"
+            "edit"
+          else
+            params[:action]
           end
         end
       end

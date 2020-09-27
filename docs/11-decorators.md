@@ -1,3 +1,7 @@
+---
+redirect_from: /docs/11-decorators.html
+---
+
 # Decorators
 
 Active Admin allows you to use the decorator pattern to provide view-specific
@@ -13,7 +17,7 @@ class Post < ActiveRecord::Base
 end
 
 # app/decorators/post_decorator.rb
-class PostDecorator < ApplicationDecorator
+class PostDecorator < Draper::Decorator
   delegate_all
 
   def image
@@ -33,20 +37,33 @@ ActiveAdmin.register Post do
 end
 ```
 
+You can pass any decorator class as an argument to `decorate_with`
+as long as it accepts the record to be decorated as a parameter in
+the initializer, and responds to all the necessary methods.
+
+```ruby
+# app/decorators/post_decorator.rb
+class PostDecorator
+  attr_reader :post
+  delegate_missing_to :post
+
+  def initialize(post)
+    @post = post
+  end
+end
+```
+
 ## Forms
 
-If you decorate an AA resource, the form will also be decorated.
-
-In most cases this will work as expected, but if your decorator uses the same
-method name as an attribute and it returns a modified version of the attribute's
-value, you'll want to set `decorate: false` to make sure that the population of
-existing values happens correctly:
+By default, ActiveAdmin does *not* decorate the resource used to render forms.
+If you need ActiveAdmin to decorate the forms, you can pass `decorate: true` to the
+form block.
 
 ```ruby
 ActiveAdmin.register Post do
   decorate_with PostDecorator
 
-  form decorate: false do |f|
+  form decorate: true do |f|
     # ...
   end
 end

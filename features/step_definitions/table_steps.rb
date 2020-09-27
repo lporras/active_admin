@@ -1,5 +1,6 @@
 Then /^I should see (\d+) ([\w]*) in the table$/ do |count, resource_type|
-  all("table.index_table tr > td:first").count.should eq count.to_i
+  expect(page).to \
+    have_css("table.index_table tr > td:first-child", count: count.to_i)
 end
 
 # TODO: simplify this, if possible?
@@ -12,7 +13,7 @@ class HtmlTableToTextHelper
   def to_array
     rows = Nokogiri::HTML(@html).css("#{@selector} tr")
     rows.map do |row|
-      row.css('th, td').map do |td|
+      row.css("th, td").map do |td|
         cell_to_string(td)
       end
     end
@@ -22,44 +23,28 @@ class HtmlTableToTextHelper
 
   def cell_to_string(td)
     str = ""
-    input = td.css('input').last
+    input = td.css("input").last
 
     if input
       str << input_to_string(input)
     end
 
-    str << td.content.strip.gsub("\n", ' ')
+    str << td.content.strip.gsub("\n", " ")
   end
 
   def input_to_string(input)
     case input.attribute("type").value
     when "checkbox"
-      if input.attribute("disabled")
-        "_"
-      else
-        if input.attribute("checked")
-          "[X]"
-        else
-          "[ ]"
-        end
-      end
-    when "text"
-      if input.attribute("value").present?
-        "[#{input.attribute("value")}]"
-      else
-        "[ ]"
-      end
-    when "submit"
-      input.attribute("value")
+      "[ ]"
     else
+      # :nocov:
       raise "I don't know what to do with #{input}"
+      # :nocov:
     end
   end
 end
 
 module TableMatchHelper
-
-
   # @param table [Array[Array]]
   # @param expected_table [Array[Array[String]]]
   # The expected_table values are String. They are converted to
@@ -78,12 +63,14 @@ module TableMatchHelper
         begin
           assert_cells_match(cell, expected_cell)
         rescue
+          # :nocov:
           puts "Cell at line #{row_index} and column #{column_index}: #{cell.inspect} does not match #{expected_cell.inspect}"
           puts "Expecting:"
           table.each { |row| puts row.inspect }
           puts "to match:"
           expected_table.each { |row| puts row.inspect }
           raise $!
+          # :nocov:
         end
       end
     end
@@ -91,16 +78,14 @@ module TableMatchHelper
 
   def assert_cells_match(cell, expected_cell)
     if expected_cell =~ /^\/.*\/$/
-      cell.should match(Regexp.new(expected_cell[1..-2]))
+      expect(cell).to match /#{expected_cell[1..-2]}/
     else
-      (cell || "").strip.should == expected_cell
+      expect((cell || "").strip).to eq expected_cell
     end
   end
-
-end # module TableMatchHelper
+end
 
 World(TableMatchHelper)
-
 
 # Usage:
 #
@@ -110,7 +95,7 @@ World(TableMatchHelper)
 #     |    /\d+/     | 12/02/12 |       $25.00 |
 #
 Then /^I should see the "([^"]*)" table:$/ do |table_id, expected_table|
-  page.should have_css("table##{table_id}")
+  expect(page).to have_css "table##{table_id}"
 
   assert_tables_match(
     HtmlTableToTextHelper.new(page.body, "table##{table_id}").to_array,

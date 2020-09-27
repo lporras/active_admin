@@ -4,22 +4,32 @@ module ActiveAdmin
       builder_method :table_for
 
       def tag_name
-        'table'
+        "table"
       end
 
-      def build(record_or_collection, options = {})
-        @sortable       = options.delete(:sortable)
+      def build(obj, *attrs)
+        options = attrs.extract_options!
+        @sortable = options.delete(:sortable)
+        @collection = obj.respond_to?(:each) && !obj.is_a?(Hash) ? obj : [obj]
         @resource_class = options.delete(:i18n)
-        @collection     = Array(record_or_collection)
+        @resource_class ||= @collection.klass if @collection.respond_to? :klass
+
         @columns = []
+        @row_class = options.delete(:row_class)
+
         build_table
         super(options)
+        columns(*attrs)
+      end
+
+      def columns(*attrs)
+        attrs.each { |attr| column(attr) }
       end
 
       def column(*args, &block)
         options = default_options.merge(args.extract_options!)
         title = args[0]
-        data  = args[1] || args[0]
+        data = args[1] || args[0]
 
         col = Column.new(title, data, @resource_class, options, &block)
         @columns << col
@@ -30,9 +40,9 @@ module ActiveAdmin
         end
 
         # Add a table cell for each item
-        @collection.each_with_index do |item, i|
-          within @tbody.children[i] do
-            build_table_cell col, item
+        @collection.each_with_index do |resource, index|
+          within @tbody.children[index] do
+            build_table_cell col, resource
           end
         end
       end
@@ -55,12 +65,12 @@ module ActiveAdmin
       end
 
       def build_table_header(col)
-        classes  = Arbre::HTML::ClassList.new
+        classes = Arbre::HTML::ClassList.new
         sort_key = sortable? && col.sortable? && col.sort_key
-        params   = request.query_parameters.except :page, :order, :commit, :format
+        params = request.query_parameters.except :page, :order, :commit, :format
 
-        classes << 'sortable'                         if sort_key
-        classes << "sorted-#{current_sort[1]}"        if sort_key && current_sort[0] == sort_key
+        classes << "sortable" if sort_key
+        classes << "sorted-#{current_sort[1]}" if sort_key && current_sort[0] == sort_key
         classes << col.html_class
 
         if sort_key
@@ -75,15 +85,23 @@ module ActiveAdmin
       def build_table_body
         @tbody = tbody do
           # Build enough rows for our collection
-          @collection.each{|elem| tr(:class => cycle('odd', 'even'), :id => dom_id(elem)) }
+          @collection.each do |elem|
+            classes = [helpers.cycle("odd", "even")]
+
+            if @row_class
+              classes << @row_class.call(elem)
+            end
+
+            tr(class: classes.flatten.join(" "), id: dom_id_for(elem))
+          end
         end
       end
 
-      def build_table_cell(col, item)
+      def build_table_cell(col, resource)
         td class: col.html_class do
-          value = call_method_or_proc_on item, col.data, exec: false
-          value = pretty_format(value) if col.data.is_a?(Symbol)
-          value
+          html = helpers.format_attribute(resource, col.data)
+          # Don't add the same Arbre twice, while still allowing format_attribute to call status_tag
+          current_arbre_element << html unless current_arbre_element.children.include? html
         end
       end
 
@@ -91,10 +109,14 @@ module ActiveAdmin
       #   current_sort[0] #=> sort_key
       #   current_sort[1] #=> asc | desc
       def current_sort
-        @current_sort ||= if params[:order] =~ /^([\w\_\.]+)_(desc|asc)$/
-          [$1,$2]
-        else
-          []
+        @current_sort ||= begin
+          order_clause = active_admin_config.order_clause.new(active_admin_config, params[:order])
+
+          if order_clause.valid?
+            [order_clause.field, order_clause.order]
+          else
+            []
+          end
         end
       end
 
@@ -104,21 +126,21 @@ module ActiveAdmin
       # 'desc' it will return 'asc'
       def order_for_sort_key(sort_key)
         current_key, current_order = current_sort
-        return 'desc' unless current_key == sort_key
-        current_order == 'desc' ? 'asc' : 'desc'
+        return "desc" unless current_key == sort_key
+        current_order == "desc" ? "asc" : "desc"
       end
 
       def default_options
         {
-          :i18n => @resource_class
+          i18n: @resource_class
         }
       end
 
       class Column
 
-        attr_accessor :title, :data , :html_class
+        attr_accessor :title, :data, :html_class
 
-        def initialize(*args, &block) 
+        def initialize(*args, &block)
           @options = args.extract_options!
 
           @title = args[0]
@@ -126,23 +148,21 @@ module ActiveAdmin
           if @options.has_key?(:class)
             html_classes << @options.delete(:class)
           elsif @title.present?
-            html_classes << "col-#{@title.to_s.parameterize('_')}"
+            html_classes << "col-#{@title.to_s.parameterize(separator: "_")}"
           end
-          @html_class = html_classes.join(' ')
+          @html_class = html_classes.join(" ")
           @data = args[1] || args[0]
           @data = block if block
           @resource_class = args[2]
         end
 
         def sortable?
-          if @data.is_a?(Proc)
-            [String, Symbol].include?(@options[:sortable].class)
-          elsif @options.has_key?(:sortable)
-            @options[:sortable]
-          elsif @data.respond_to?(:to_sym) && @resource_class
-            !@resource_class.reflect_on_association(@data.to_sym)
+          if @options.has_key?(:sortable)
+            !!@options[:sortable]
+          elsif @resource_class
+            @resource_class.column_names.include?(sort_column_name)
           else
-            true
+            @title.present?
           end
         end
 
@@ -155,19 +175,12 @@ module ActiveAdmin
         #
         # You can set the sort key by passing a string or symbol
         # to the sortable option:
-        #   column :username, :sortable => 'other_column_to_sort_on'
-        #
-        # If you pass a block to be rendered for this column, the column
-        # will not be sortable unless you pass a string to sortable to
-        # sort the column on:
-        #
-        #   column('Username', :sortable => 'login'){ @user.pretty_name }
-        #   # => Sort key will be 'login'
+        #   column :username, sortable: 'other_column_to_sort_on'
         #
         def sort_key
           # If boolean or nil, use the default sort key.
-          if @options[:sortable] == true || @options[:sortable] == false || @options[:sortable].nil?
-            @data.to_s
+          if @options[:sortable].nil? || @options[:sortable] == true || @options[:sortable] == false
+            sort_column_name
           else
             @options[:sortable].to_s
           end
@@ -184,6 +197,12 @@ module ActiveAdmin
           else
             @title
           end
+        end
+
+        private
+
+        def sort_column_name
+          @data.is_a?(Symbol) ? @data.to_s : @title.to_s
         end
       end
     end

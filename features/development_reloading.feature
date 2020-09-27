@@ -1,10 +1,10 @@
+@requires-reloading @changes-filesystem
 Feature: Development Reloading
 
   In order to quickly develop applications
   As a developer
   I want the application to reload itself in development
 
-  @requires-reloading
   Scenario: Registering a resource that was not previously registered
     When I am logged in with capybara
     Then I should not see a menu item for "Posts"
@@ -12,14 +12,11 @@ Feature: Development Reloading
     When "app/admin/posts.rb" contains:
     """
       ActiveAdmin.register Post do
-        controller do
-          def permitted_params
-            params.permit post: [:category, :author, :title, :body, :published_at, :starred]
-          end if Rails::VERSION::MAJOR == 4
-        end
+        permit_params :custom_category_id, :author_id, :title,
+          :body, :position, :published_date, :starred
       end
     """
-    When I am logged in with capybara
+    And I am logged in with capybara
     Then I should see a menu item for "Posts"
 
     When I create a new post with the title "A"

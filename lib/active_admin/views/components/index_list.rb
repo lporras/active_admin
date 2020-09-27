@@ -1,4 +1,4 @@
-require 'active_admin/helpers/collection'
+require "active_admin/helpers/collection"
 
 module ActiveAdmin
   module Views
@@ -15,7 +15,7 @@ module ActiveAdmin
       end
 
       def tag_name
-        'ul'
+        "ul"
       end
 
       # Builds the links for presenting different index views to the user
@@ -35,10 +35,13 @@ module ActiveAdmin
       #
       # @param [Class] index_class The class on which to build the link and html classes
       def build_index_list(index_class)
-        li :class => classes_for_index(index_class) do
-          a :href => url_for(params.merge(:as => index_class.index_name.to_sym)), :class => "table_tools_button" do
+        li class: classes_for_index(index_class) do
+          params = request.query_parameters.except :page, :commit, :format
+          url_with_params = url_for(**params.merge(as: index_class.index_name.to_sym).symbolize_keys)
+
+          a href: url_with_params, class: "table_tools_button" do
             name = index_class.index_name
-            I18n.t("active_admin.index_list.#{name}", :default => name.to_s.titleize)
+            I18n.t("active_admin.index_list.#{name}", default: name.to_s.titleize)
           end
         end
       end
@@ -64,5 +67,3 @@ module ActiveAdmin
     end
   end
 end
-
-

@@ -1,19 +1,24 @@
-require 'spec_helper'
+require "rails_helper"
 
-describe "Registering an object to administer" do
-  application = ActiveAdmin::Application.new
+RSpec.describe "Registering an object to administer" do
+  let(:application) { ActiveAdmin::Application.new }
 
   context "with no configuration" do
-    namespace = ActiveAdmin::Namespace.new(application, :admin)
-    it "should call register on the namespace" do
+    let(:namespace) { ActiveAdmin::Namespace.new(application, :admin) }
+
+    before do
       application.namespaces[namespace.name] = namespace
+    end
+
+    it "should call register on the namespace" do
       expect(namespace).to receive(:register)
 
       application.register Category
     end
 
     it "should dispatch a Resource::RegisterEvent" do
-      expect(ActiveAdmin::Event).to receive(:dispatch).with(ActiveAdmin::Resource::RegisterEvent, an_instance_of(ActiveAdmin::Resource))
+      expect(ActiveSupport::Notifications).to receive(:publish).with(ActiveAdmin::Resource::RegisterEvent, an_instance_of(ActiveAdmin::Resource))
+
       application.register Category
     end
   end
@@ -24,13 +29,13 @@ describe "Registering an object to administer" do
       application.namespaces[namespace.name] = namespace
       expect(namespace).to receive(:register)
 
-      application.register Category, :namespace => :hello_world
+      application.register Category, namespace: :hello_world
     end
 
     it "should generate a Namespace::RegisterEvent and a Resource::RegisterEvent" do
-      expect(ActiveAdmin::Event).to receive(:dispatch).with(ActiveAdmin::Namespace::RegisterEvent, an_instance_of(ActiveAdmin::Namespace))
-      expect(ActiveAdmin::Event).to receive(:dispatch).with(ActiveAdmin::Resource::RegisterEvent, an_instance_of(ActiveAdmin::Resource))
-      application.register Category, :namespace => :not_yet_created
+      expect(ActiveSupport::Notifications).to receive(:publish).with(ActiveAdmin::Namespace::RegisterEvent, an_instance_of(ActiveAdmin::Namespace))
+      expect(ActiveSupport::Notifications).to receive(:publish).with(ActiveAdmin::Resource::RegisterEvent, an_instance_of(ActiveAdmin::Resource))
+      application.register Category, namespace: :not_yet_created
     end
   end
 
@@ -40,7 +45,7 @@ describe "Registering an object to administer" do
       application.namespaces[namespace.name] = namespace
       expect(namespace).to receive(:register)
 
-      application.register Category, :namespace => false
+      application.register Category, namespace: false
     end
   end
 
@@ -52,5 +57,4 @@ describe "Registering an object to administer" do
       expect(config_1.filters.size).to eq 2
     end
   end
-
 end

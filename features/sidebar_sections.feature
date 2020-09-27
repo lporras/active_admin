@@ -17,7 +17,7 @@ Feature: Sidebar Sections
     """
     When I am on the index page for posts
     Then I should see a sidebar titled "Help"
-    Then I should see "Need help" within the "Help" sidebar
+    And I should see "Need help" within the "Help" sidebar
 
     When I follow "View"
     Then I should see a sidebar titled "Help"
@@ -26,22 +26,21 @@ Feature: Sidebar Sections
     Then I should see a sidebar titled "Help"
 
     When I am on the index page for posts
-    When I follow "New Post"
+    And I follow "New Post"
     Then I should see a sidebar titled "Help"
-
 
   Scenario: Create a sidebar for only one action
     Given a configuration of:
     """
     ActiveAdmin.register Post do
-      sidebar :help, :only => :index do
+      sidebar :help, only: :index do
         "Need help? Email us at help@example.com"
       end
     end
     """
     When I am on the index page for posts
     Then I should see a sidebar titled "Help"
-    Then I should see "Need help" within the "Help" sidebar
+    And I should see "Need help" within the "Help" sidebar
 
     When I follow "View"
     Then I should not see a sidebar titled "Help"
@@ -50,15 +49,14 @@ Feature: Sidebar Sections
     Then I should not see a sidebar titled "Help"
 
     When I am on the index page for posts
-    When I follow "New Post"
+    And I follow "New Post"
     Then I should not see a sidebar titled "Help"
-
 
   Scenario: Create a sidebar for all except one action
     Given a configuration of:
     """
     ActiveAdmin.register Post do
-      sidebar :help, :except => :index do
+      sidebar :help, except: :index do
         "Need help? Email us at help@example.com"
       end
     end
@@ -73,14 +71,14 @@ Feature: Sidebar Sections
     Then I should see a sidebar titled "Help"
 
     When I am on the index page for posts
-    When I follow "New Post"
+    And I follow "New Post"
     Then I should see a sidebar titled "Help"
 
   Scenario: Create a sidebar for only one action with if clause that returns false
     Given a configuration of:
     """
     ActiveAdmin.register Post do
-      sidebar :help, :only => :index, :if => proc{ current_active_admin_user.nil? } do
+      sidebar :help, only: :index, if: proc{ current_active_admin_user.nil? } do
         "Need help? Email us at help@example.com"
       end
     end
@@ -95,7 +93,7 @@ Feature: Sidebar Sections
     Then I should not see a sidebar titled "Help"
 
     When I am on the index page for posts
-    When I follow "New Post"
+    And I follow "New Post"
     Then I should not see a sidebar titled "Help"
 
   Scenario: Create a sidebar for only one action with if clause with method symbol
@@ -106,7 +104,7 @@ Feature: Sidebar Sections
     end
     ActiveAdmin.register Post do
       controller { helper SidebarHelper }
-      sidebar :help, :only => :index, :if => :can_sidebar? do
+      sidebar :help, only: :index, if: :can_sidebar? do
         "Need help? Email us at help@example.com"
       end
     end
@@ -121,14 +119,14 @@ Feature: Sidebar Sections
     Then I should not see a sidebar titled "Help"
 
     When I am on the index page for posts
-    When I follow "New Post"
+    And I follow "New Post"
     Then I should not see a sidebar titled "Help"
 
   Scenario: Create a sidebar for only one action with if clause that returns true
     Given a configuration of:
     """
     ActiveAdmin.register Post do
-      sidebar :help, :only => :show, :if => proc{ !current_active_admin_user.nil? } do
+      sidebar :help, only: :show, if: proc{ !current_active_admin_user.nil? } do
         "Need help? Email us at help@example.com"
       end
     end
@@ -138,13 +136,13 @@ Feature: Sidebar Sections
 
     When I follow "View"
     Then I should see a sidebar titled "Help"
-    Then I should see "Need help" within the "Help" sidebar
+    And I should see "Need help" within the "Help" sidebar
 
     When I follow "Edit Post"
     Then I should not see a sidebar titled "Help"
 
     When I am on the index page for posts
-    When I follow "New Post"
+    And I follow "New Post"
     Then I should not see a sidebar titled "Help"
 
   Scenario: Create a sidebar with deep content
@@ -168,12 +166,13 @@ Feature: Sidebar Sections
     And I should see "First List First Item" within the "Help" sidebar
     And I should see "Second List Second Item" within the "Help" sidebar
 
+  @changes-filesystem
   Scenario: Rendering sidebar by default without a block or partial name
     Given "app/views/admin/posts/_help_sidebar.html.erb" contains:
     """
       <p>Hello World from a partial</p>
     """
-    Given a configuration of:
+    And a configuration of:
     """
     ActiveAdmin.register Post do
       sidebar :help
@@ -182,17 +181,29 @@ Feature: Sidebar Sections
     When I am on the index page for posts
     Then I should see "Hello World from a partial" within the "Help" sidebar
 
+  @changes-filesystem
   Scenario: Rendering a partial as the sidebar content
     Given "app/views/admin/posts/_custom_help_partial.html.erb" contains:
     """
       <p>Hello World from a custom partial</p>
     """
-    Given a configuration of:
+    And a configuration of:
     """
     ActiveAdmin.register Post do
-      sidebar :help, :partial => "custom_help_partial"
+      sidebar :help, partial: "custom_help_partial"
     end
     """
     When I am on the index page for posts
     Then I should see "Hello World from a custom partial" within the "Help" sidebar
 
+  Scenario: Position sidebar at the top using priority option
+    Given a configuration of:
+    """
+    ActiveAdmin.register Post do
+      sidebar :help, priority: 0 do
+        "Need help? Email us at help@example.com"
+      end
+    end
+    """
+    When I am on the index page for posts
+    Then I should see a sidebar titled "Help" above sidebar titled "Filters"

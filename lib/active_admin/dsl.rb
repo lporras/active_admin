@@ -15,7 +15,7 @@ module ActiveAdmin
       instance_exec &block if block_given?
     end
 
-    # The instance of ActiveAdmin::Config that's being registered
+    # The instance of ActiveAdmin::Resource that's being registered
     # currently. You can use this within your registration blocks to
     # modify options:
     #
@@ -50,7 +50,7 @@ module ActiveAdmin
     #
     # @param [Module] mod A module to include
     #
-    # @returns [Nil]
+    # @return [Nil]
     def include(mod)
       mod.included(self)
     end
@@ -77,13 +77,14 @@ module ActiveAdmin
 
     # Add a new action item to the resource
     #
+    # @param [Symbol] name
     # @param [Hash] options valid keys include:
     #                 :only:  A single or array of controller actions to display
     #                         this action item on.
     #                 :except: A single or array of controller actions not to
     #                          display this action item on.
-    def action_item(options = {}, &block)
-      config.add_action_item(options, &block)
+    def action_item(name, options = {}, &block)
+      config.add_action_item(name, options, &block)
     end
 
     # Add a new batch action item to the resource
@@ -100,7 +101,7 @@ module ActiveAdmin
     def batch_action(title, options = {}, &block)
       # Create symbol & title information
       if title.is_a? String
-        sym = title.titleize.gsub(' ', '').underscore.to_sym
+        sym = title.titleize.tr(" ", "").underscore.to_sym
       else
         sym = title
         title = sym.to_s.titleize
@@ -108,7 +109,7 @@ module ActiveAdmin
 
       # Either add/remove the batch action
       unless options == false
-        config.add_batch_action( sym, title, options, &block )
+        config.add_batch_action(sym, title, options, &block)
       else
         config.remove_batch_action sym
       end
@@ -120,7 +121,7 @@ module ActiveAdmin
       config.menu_item_options = options
     end
 
-    # Set the name of the navigation menu to display. This is mainly used in conjuction with the
+    # Set the name of the navigation menu to display. This is mainly used in conjunction with the
     # `#belongs_to` functionality.
     #
     # @param [Symbol] menu_name The name of the menu to display as the global navigation
@@ -129,7 +130,7 @@ module ActiveAdmin
     # Pass a block returning the name of a menu you want rendered for the request, being
     # executed in the context of the controller
     #
-    def navigation_menu(menu_name=nil, &block)
+    def navigation_menu(menu_name = nil, &block)
       config.navigation_menu_name = menu_name || block
     end
 
@@ -155,11 +156,5 @@ module ActiveAdmin
       config.sidebar_sections << ActiveAdmin::SidebarSection.new(name, options, &block)
     end
 
-    def decorate_with(decorator_class)
-      # Force storage as a string. This will help us with reloading issues.
-      # Assuming decorator_class.to_s will return the name of the class allows
-      # us to handle a string or a class.
-      config.decorator_class_name = "::#{ decorator_class }"
-    end
   end
 end

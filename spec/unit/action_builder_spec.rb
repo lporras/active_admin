@@ -1,17 +1,17 @@
-require 'spec_helper'
+require "rails_helper"
 
-describe 'defining new actions from registration blocks' do
+RSpec.describe "defining actions from registration blocks", type: :controller do
+  let(:klass) { Admin::PostsController }
 
-  let(:controller){ Admin::PostsController }
+  before do
+    load_resources { action! }
 
-  describe "generating a new member action" do
-    before do
-      action!
-      reload_routes!
-    end
+    @controller = klass.new
+  end
 
-    after(:each) do
-      controller.clear_member_actions!
+  describe "creates a member action" do
+    after do
+      klass.clear_member_actions!
     end
 
     context "with a block" do
@@ -24,11 +24,13 @@ describe 'defining new actions from registration blocks' do
       end
 
       it "should create a new public instance method" do
-        expect(controller.public_instance_methods.collect(&:to_s)).to include("comment")
+        expect(klass.public_instance_methods.collect(&:to_s)).to include("comment")
       end
+
       it "should add itself to the member actions config" do
-        expect(controller.active_admin_config.member_actions.size).to eq 1
+        expect(klass.active_admin_config.member_actions.size).to eq 1
       end
+
       it "should create a new named route" do
         expect(Rails.application.routes.url_helpers.methods.collect(&:to_s)).to include("comment_admin_post_path")
       end
@@ -40,31 +42,32 @@ describe 'defining new actions from registration blocks' do
           member_action :comment
         end
       end
+
       it "should still generate a new empty action" do
-        expect(controller.public_instance_methods.collect(&:to_s)).to include("comment")
+        expect(klass.public_instance_methods.collect(&:to_s)).to include("comment")
       end
     end
 
     context "with :title" do
       let(:action!) do
         ActiveAdmin.register Post do
-          member_action :comment, :title => "My Awesome Comment"
+          member_action :comment, title: "My Awesome Comment" do
+            render json: { a: 2 }
+          end
         end
       end
 
-      subject { find_before_filter controller, :comment }
+      it "sets the page title" do
+        get :comment, params: { id: 1 }
 
-      it { should set_page_title_to "My Awesome Comment" }
+        expect(controller.instance_variable_get(:@page_title)).to eq "My Awesome Comment"
+      end
     end
   end
 
-  describe "generate a new collection action" do
-    before do
-      action!
-      reload_routes!
-    end
-    after(:each) do
-      controller.clear_collection_actions!
+  describe "creates a collection action" do
+    after do
+      klass.clear_collection_actions!
     end
 
     context "with a block" do
@@ -75,52 +78,79 @@ describe 'defining new actions from registration blocks' do
           end
         end
       end
-      it "should create a new public instance method" do
-        expect(controller.public_instance_methods.collect(&:to_s)).to include("comments")
+
+      it "should create a public instance method" do
+        expect(klass.public_instance_methods.collect(&:to_s)).to include("comments")
       end
+
       it "should add itself to the member actions config" do
-        expect(controller.active_admin_config.collection_actions.size).to eq 1
+        expect(klass.active_admin_config.collection_actions.size).to eq 1
       end
-      it "should create a new named route" do
+
+      it "should create a named route" do
         expect(Rails.application.routes.url_helpers.methods.collect(&:to_s)).to include("comments_admin_posts_path")
       end
     end
+
     context "without a block" do
       let(:action!) do
         ActiveAdmin.register Post do
           collection_action :comments
         end
       end
+
       it "should still generate a new empty action" do
-        expect(controller.public_instance_methods.collect(&:to_s)).to include("comments")
+        expect(klass.public_instance_methods.collect(&:to_s)).to include("comments")
       end
     end
+
     context "with :title" do
       let(:action!) do
         ActiveAdmin.register Post do
-          collection_action :comments, :title => "My Awesome Comments"
+          collection_action :comments, title: "My Awesome Comments" do
+            render json: { a: 2 }
+          end
         end
       end
 
-      subject { find_before_filter controller, :comments }
+      it "sets the page title" do
+        get :comments
 
-      it { should set_page_title_to "My Awesome Comments" }
+        expect(controller.instance_variable_get(:@page_title)).to eq "My Awesome Comments"
+      end
     end
   end
 
-  def find_before_filter(controller, action)
-    controller._process_action_callbacks.detect { |f| f.kind == :before && f.options[:only] == [action] }
-  end
-
-  RSpec::Matchers.define :set_page_title_to do |expected|
-    match do |filter|
-      filter.raw_filter.call
-      @actual = filter.klass.instance_variable_get(:@page_title)
-      expect(@actual).to eq expected
+  context "when method with given name is already defined" do
+    around do |example|
+      original_stderr = $stderr
+      $stderr = StringIO.new
+      example.run
+      $stderr = original_stderr
     end
 
-    failure_message_for_should do |filter|
-      message = "expected before_filter to set the @page_title to '#{expected}', but was '#{@actual}'"
+    describe "defining member action" do
+      let :action! do
+        ActiveAdmin.register Post do
+          member_action :process
+        end
+      end
+
+      it "writes warning to $stderr" do
+        expect($stderr.string).to include("Warning: method `process` already defined in Admin::PostsController")
+      end
+    end
+
+    describe "defining collection action" do
+      let :action! do
+        ActiveAdmin.register Post do
+          collection_action :process
+        end
+      end
+
+      it "writes warning to $stderr" do
+        expect($stderr.string).to include("Warning: method `process` already defined in Admin::PostsController")
+      end
     end
   end
 end

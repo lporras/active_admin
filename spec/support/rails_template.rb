@@ -1,114 +1,110 @@
 # Rails template to build the sample app for specs
 
-run "rm Gemfile"
-run "rm -r test"
-run "rm -r spec"
+webpacker_app = ENV["BUNDLE_GEMFILE"] == File.expand_path("../../gemfiles/rails_60_webpacker/Gemfile", __dir__)
 
-# Create a cucumber database and environment
-copy_file File.expand_path('../templates/cucumber.rb', __FILE__),                "config/environments/cucumber.rb"
-copy_file File.expand_path('../templates/cucumber_with_reloading.rb', __FILE__), "config/environments/cucumber_with_reloading.rb"
+if webpacker_app
+  create_file "app/javascript/packs/some-random-css.css"
+  create_file "app/javascript/packs/some-random-js.js"
+else
+  create_file "app/assets/stylesheets/some-random-css.css"
+  create_file "app/assets/javascripts/some-random-js.js"
+end
 
-gsub_file 'config/database.yml', /^test:.*\n/, "test: &test\n"
-gsub_file 'config/database.yml', /\z/, "\ncucumber:\n  <<: *test\n  database: db/cucumber.sqlite3"
-gsub_file 'config/database.yml', /\z/, "\ncucumber_with_reloading:\n  <<: *test\n  database: db/cucumber.sqlite3"
+create_file "app/assets/images/a/favicon.ico"
 
-generate :model, "post title:string body:text published_at:datetime author_id:integer category_id:integer starred:boolean"
-inject_into_file 'app/models/post.rb', %q{
-  belongs_to :category
-  belongs_to :author, :class_name => 'User'
-  has_many :taggings
-  accepts_nested_attributes_for :author
-  accepts_nested_attributes_for :taggings
-  attr_accessible :author unless Rails::VERSION::MAJOR > 3 && !defined? ProtectedAttributes
-}, :after => 'class Post < ActiveRecord::Base'
-copy_file File.expand_path('../templates/post_decorator.rb', __FILE__), "app/models/post_decorator.rb"
+require "active_admin/dependency"
 
-generate :model, "user type:string first_name:string last_name:string username:string age:integer"
-inject_into_file 'app/models/user.rb', %q{
-  has_many :posts, :foreign_key => 'author_id'
-  def display_name
-    "#{first_name} #{last_name}"
-  end
-}, :after => 'class User < ActiveRecord::Base'
+timestamps = ActiveAdmin::Dependency.rails?(">= 6.1.0.a") ? "--timestamps" : "created_at:datetime updated_at:datetime"
 
-generate :model, 'publisher --migration=false --parent=User'
-generate :model, 'category name:string description:text'
-inject_into_file 'app/models/category.rb', %q{
-  has_many :posts
-  has_many :authors, through: :posts
-  accepts_nested_attributes_for :posts
-}, :after => 'class Category < ActiveRecord::Base'
-generate :model, 'store name:string'
+generate :migration, "create_posts title:string body:text published_date:date author_id:integer " +
+  "position:integer custom_category_id:integer starred:boolean foo_id:integer #{timestamps}"
 
-# Generate a model with string ids
-generate :model, "tag name:string"
-gsub_file(Dir['db/migrate/*_create_tags.rb'][0], /\:tags\sdo\s.*/, ":tags, :id => false, :primary_key => :id do |t|\n\t\t\tt.string :id\n")
-inject_into_file 'app/models/tag.rb', %q{
-  self.primary_key = :id
-  before_create :set_id
+copy_file File.expand_path("templates/models/post.rb", __dir__), "app/models/post.rb"
+copy_file File.expand_path("templates/post_decorator.rb", __dir__), "app/models/post_decorator.rb"
+copy_file File.expand_path("templates/post_poro_decorator.rb", __dir__), "app/models/post_poro_decorator.rb"
 
-  private
-  def set_id
-    self.id = 8.times.inject("") { |s,e| s << (i = Kernel.rand(62); i += ((i < 10) ? 48 : ((i < 36) ? 55 : 61 ))).chr }
-  end
-}, :after => 'class Tag < ActiveRecord::Base'
+generate :migration, "create_blog_posts title:string body:text published_date:date author_id:integer " +
+  "position:integer custom_category_id:integer starred:boolean foo_id:integer #{timestamps}"
 
-generate :model, "tagging post_id:integer tag_id:integer"
-inject_into_file 'app/models/tagging.rb', %q{
-  belongs_to :post
-  belongs_to :tag
-}, :after => 'class Tagging < ActiveRecord::Base'
+copy_file File.expand_path("templates/models/blog/post.rb", __dir__), "app/models/blog/post.rb"
 
-# Configure default_url_options in test environment
-inject_into_file "config/environments/test.rb", "  config.action_mailer.default_url_options = { :host => 'example.com' }\n", :after => "config.cache_classes = true\n"
+generate :migration, "create_profiles user_id:integer bio:text #{timestamps}"
 
-# Add our local Active Admin to the load path
-inject_into_file "config/environment.rb", "\n$LOAD_PATH.unshift('#{File.expand_path(File.join(File.dirname(__FILE__), '..', '..', 'lib'))}')\nrequire \"active_admin\"\n", :after => "require File.expand_path('../application', __FILE__)"
+copy_file File.expand_path("templates/models/user.rb", __dir__), "app/models/user.rb"
+
+generate :migration, "create_users type:string first_name:string last_name:string username:string age:integer encrypted_password:string reason_of_sign_in:string #{timestamps}"
+
+copy_file File.expand_path("templates/models/profile.rb", __dir__), "app/models/profile.rb"
+
+generate :model, "publisher --migration=false --parent=User"
+
+generate :migration, "create_categories name:string description:text #{timestamps}"
+
+copy_file File.expand_path("templates/models/category.rb", __dir__), "app/models/category.rb"
+
+generate :model, "store name:string user_id:integer"
+
+generate :migration, "create_tags name:string #{timestamps}"
+
+copy_file File.expand_path("templates/models/tag.rb", __dir__), "app/models/tag.rb"
+
+generate :migration, "create_taggings post_id:integer tag_id:integer position:integer #{timestamps}"
+
+copy_file File.expand_path("templates/models/tagging.rb", __dir__), "app/models/tagging.rb"
+
+gsub_file "config/environments/test.rb", /  config.cache_classes = true/, <<-RUBY
+
+  config.cache_classes = !ENV['CLASS_RELOADING']
+  config.action_mailer.default_url_options = {host: 'example.com'}
+  config.assets.precompile += %w( some-random-css.css some-random-js.js a/favicon.ico )
+
+  config.active_record.maintain_test_schema = false
+
+RUBY
+
+gsub_file "config/boot.rb", /^.*BUNDLE_GEMFILE.*$/, <<-RUBY
+  ENV['BUNDLE_GEMFILE'] = "#{File.expand_path(ENV['BUNDLE_GEMFILE'])}"
+RUBY
+
+# Setup webpacker if necessary
+if webpacker_app
+  rails_command "webpacker:install"
+  gsub_file "config/webpacker.yml", /^(.*)extract_css.*$/, '\1extract_css: true' if ENV["RAILS_ENV"] == "test"
+end
+
+# Setup Active Admin
+generate "active_admin:install#{" --use-webpacker" if webpacker_app}"
+
+# Force strong parameters to raise exceptions
+inject_into_file "config/application.rb", after: "class Application < Rails::Application" do
+  "\n    config.action_controller.action_on_unpermitted_parameters = :raise\n"
+end
 
 # Add some translations
-append_file "config/locales/en.yml", File.read(File.expand_path('../templates/en.yml', __FILE__))
+append_file "config/locales/en.yml", File.read(File.expand_path("templates/en.yml", __dir__))
 
 # Add predefined admin resources
-directory File.expand_path('../templates/admin', __FILE__), "app/admin"
+directory File.expand_path("templates/admin", __dir__), "app/admin"
 
-$LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..', 'lib'))
+# Add predefined policies
+directory File.expand_path("templates/policies", __dir__), "app/policies"
 
-generate :'active_admin:install'
-
-rake "db:migrate"
-rake "db:test:prepare"
-run "/usr/bin/env RAILS_ENV=cucumber rake db:migrate"
-
-# Setup parallel_tests
-def setup_parallel_tests_database(after, force_insert_same_content = false)
-  inject_into_file 'config/database.yml', "<%= ENV['TEST_ENV_NUMBER'] %>", :after => after, :force => force_insert_same_content
+# Require turbolinks if necessary
+if ENV["BUNDLE_GEMFILE"] == File.expand_path("../../gemfiles/rails_60_turbolinks/Gemfile", __dir__)
+  append_file "app/assets/javascripts/active_admin.js", "//= require turbolinks\n"
 end
 
-setup_parallel_tests_database "test.sqlite3"
-setup_parallel_tests_database "cucumber.sqlite3", true
-
-# Note: this is hack!
-# Somehow, calling parallel_tests tasks from Rails generator using Thor does not work ...
-# RAILS_ENV variable never makes it to parallel_tests tasks.
-# We need to call these tasks in the after set up hook in order to creates cucumber DBs + run migrations on test & cucumber DBs
-create_file 'lib/tasks/parallel.rake', %q{
-namespace :parallel do
-  def run_in_parallel(cmd, options)
-    count = "-n #{options[:count]}" if options[:count]
-    executable = 'parallel_test'
-    command = "#{executable} --exec '#{cmd}' #{count} #{'--non-parallel' if options[:non_parallel]}"
-    abort unless system(command)
-  end
-
-  desc "create cucumber databases via db:create --> parallel:create_cucumber_db[num_cpus]"
-  task :create_cucumber_db, :count do |t, args|
-    run_in_parallel("rake db:create RAILS_ENV=cucumber", args)
-  end
-
-  desc "load dumped schema for cucumber databases"
-  task :load_schema_cucumber_db, :count do |t,args|
-    run_in_parallel("rake db:schema:load RAILS_ENV=cucumber", args)
-  end
+if ENV["RAILS_ENV"] != "test"
+  inject_into_file "config/routes.rb", "\n  root to: redirect('admin')", after: /.*routes.draw do/
 end
-}
 
+rails_command "db:drop db:create db:migrate", env: ENV["RAILS_ENV"]
+
+if ENV["RAILS_ENV"] == "test"
+  inject_into_file "config/database.yml", "<%= ENV['TEST_ENV_NUMBER'] %>", after: "test.sqlite3"
+
+  rails_command "parallel:drop parallel:create parallel:load_schema", env: ENV["RAILS_ENV"]
+end
+
+git add: "."
+git commit: "-m 'Bare application'"

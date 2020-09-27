@@ -1,12 +1,9 @@
-require 'spec_helper'
+require "rails_helper"
 
 module ActiveAdmin
-  describe Resource, "Pagination" do
-
-    before { load_defaults! }
-
-    let(:application){ ActiveAdmin::Application.new }
-    let(:namespace){ Namespace.new(application, :admin) }
+  RSpec.describe Resource, "Pagination" do
+    let(:application) { ActiveAdmin::Application.new }
+    let(:namespace) { Namespace.new(application, :admin) }
 
     def config(options = {})
       @config ||= Resource.new(namespace, Category, options)

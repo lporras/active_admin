@@ -1,3 +1,6 @@
+---
+redirect_from: /docs/7-sidebars.html
+---
 # Sidebar Sections
 
 Sidebars allow you to put whatever content you want on the side the page.
@@ -11,7 +14,7 @@ end
 This will generate a sidebar on every page for that resource. The first
 argument is used as the title, and can be a symbol, string, or lambda.
 
-You can also use [Arbre](https://github.com/gregbell/arbre) to define HTML content.
+You can also use [Arbre](https://github.com/activeadmin/arbre) to define HTML content.
 
 ```ruby
 sidebar :help do
@@ -39,9 +42,34 @@ sidebar :help, if: proc{ current_admin_user.super_admin? } do
 end
 ```
 
+You can access your model as resource in the sidebar too:
+
+```ruby
+sidebar :custom, only: :show do
+  resource.a_method
+end
+```
+
 You can also render a partial:
 
 ```ruby
 sidebar :help                    # app/views/admin/posts/_help_sidebar.html.erb
 sidebar :help, partial: 'custom' # app/views/admin/posts/_custom.html.erb
 ```
+
+It's possible to add custom class name to the sidebar parent element by passing
+`class` option:
+
+```ruby
+sidebar :help, class: 'custom_class'
+```
+
+By default sidebars are positioned in the same order as they defined, but it's also
+possible to specify their position manually:
+
+```ruby
+# will push Help section to the top (above default Filters section)
+sidebar :help, priority: 0
+```
+
+Default sidebar priority is `10`.

@@ -1,7 +1,27 @@
 module ActiveAdmin
   # This is the class where all the register blocks are evaluated.
   class ResourceDSL < DSL
+
     private
+
+    # Redefine sort behaviour for column
+    #
+    # For example:
+    #
+    #   # nulls last
+    #   order_by(:age) do |order_clause|
+    #     [order_clause.to_sql, 'NULLS LAST'].join(' ')  if order_clause.order == 'desc'
+    #   end
+    #
+    #   # by last_name but in the case that there is no last name, by first_name.
+    #   order_by(:full_name) do |order_clause|
+    #     ['COALESCE(NULLIF(last_name, ''), first_name), first_name', order_clause.order].join(' ')
+    #   end
+    #
+    #
+    def order_by(column, &block)
+      config.ordering[column] = block
+    end
 
     def belongs_to(target, options = {})
       config.belongs_to(target, options)
@@ -17,12 +37,17 @@ module ActiveAdmin
       config.scope(*args, &block)
     end
 
+    # Store relations that should be included
+    def includes(*args)
+      config.includes.push *args
+    end
+
     #
-    # Rails 4 Strong Parameters Support
+    # Keys included in the `permitted_params` setting are automatically whitelisted.
     #
     # Either
     #
-    #   permit_params :title, :author, :body
+    #   permit_params :title, :author, :body, tags: []
     #
     # Or
     #
@@ -36,13 +61,21 @@ module ActiveAdmin
     #   end
     #
     def permit_params(*args, &block)
-      resource_sym = config.resource_name.singular.to_sym
+      param_key = config.param_key.to_sym
+      belongs_to_param = config.belongs_to_param
+      create_another_param = :create_another if config.create_another
 
       controller do
         define_method :permitted_params do
-          params.permit resource_sym =>
-                        block ? instance_exec(&block) : args
+          permitted_params =
+            active_admin_namespace.permitted_params +
+              Array.wrap(belongs_to_param) +
+              Array.wrap(create_another_param)
+
+          params.permit(*permitted_params, param_key => block ? instance_exec(&block) : args)
         end
+
+        private :permitted_params
       end
     end
 
@@ -70,11 +103,13 @@ module ActiveAdmin
     #     column("Author") { |post| post.author.full_name }
     #   end
     #
-    #   csv :col_sep => ";", :force_quotes => true do
+    #   csv col_sep: ";", force_quotes: true do
     #     column :name
     #   end
     #
-    def csv(options={}, &block)
+    def csv(options = {}, &block)
+      options[:resource] = config
+
       config.csv_builder = CSVBuilder.new(options, &block)
     end
 
@@ -86,7 +121,7 @@ module ActiveAdmin
     #
     #   ActiveAdmin.register Post do
     #     member_action :comments do
-    #       @post = Post.find(params[:id]
+    #       @post = Post.find(params[:id])
     #       @comments = @post.comments
     #     end
     #   end
@@ -98,12 +133,14 @@ module ActiveAdmin
     # action.
     #
     def action(set, name, options = {}, &block)
+      warn "Warning: method `#{name}` already defined in #{controller.name}" if controller.method_defined?(name)
+
       set << ControllerAction.new(name, options)
       title = options.delete(:title)
 
       controller do
-        before_filter(:only => [name]) { @page_title = title } if title
-        define_method(name, &block || Proc.new{})
+        before_action(only: [name]) { @page_title = title } if title
+        define_method(name, &block || Proc.new {})
       end
     end
 
@@ -113,6 +150,13 @@ module ActiveAdmin
 
     def collection_action(name, options = {}, &block)
       action config.collection_actions, name, options, &block
+    end
+
+    def decorate_with(decorator_class)
+      # Force storage as a string. This will help us with reloading issues.
+      # Assuming decorator_class.to_s will return the name of the class allows
+      # us to handle a string or a class.
+      config.decorator_class_name = "::#{ decorator_class }"
     end
 
     # Defined Callbacks
@@ -139,15 +183,31 @@ module ActiveAdmin
     # == Before / After Destroy
     # Called before and after the object is destroyed from the database.
     #
-    delegate :before_build,   :after_build,   :to => :controller
-    delegate :before_create,  :after_create,  :to => :controller
-    delegate :before_update,  :after_update,  :to => :controller
-    delegate :before_save,    :after_save,    :to => :controller
-    delegate :before_destroy, :after_destroy, :to => :controller
+    delegate :before_build, :after_build, to: :controller
+    delegate :before_create, :after_create, to: :controller
+    delegate :before_update, :after_update, to: :controller
+    delegate :before_save, :after_save, to: :controller
+    delegate :before_destroy, :after_destroy, to: :controller
 
-    # Standard rails filters
-    delegate :before_filter, :skip_before_filter, :after_filter, :skip_after_filter, :around_filter, :skip_filter,
-             :to => :controller
+    # This code defines both *_filter and *_action for Rails 5.0 and  *_action for Rails >= 5.1
+    phases = [
+      :before, :skip_before,
+      :after, :skip_after,
+      :around, :skip
+    ]
+    keywords = if Rails::VERSION::MAJOR == 5 && Rails::VERSION::MINOR >= 1
+                 [:action]
+               else
+                 [:action, :filter]
+               end
+
+    keywords.each do |name|
+      phases.each do |action|
+       define_method "#{action}_#{name}" do |*args, &block|
+         controller.public_send "#{action}_action", *args, &block
+       end
+     end
+    end
 
     # Specify which actions to create in the controller
     #
@@ -158,7 +218,7 @@ module ActiveAdmin
     #   end
     #
     # Will only create the index and show actions (no create, update or delete)
-    delegate :actions, :to => :controller
+    delegate :actions, to: :controller
 
   end
 end

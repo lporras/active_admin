@@ -1,14 +1,18 @@
+require "active_admin/generators/boilerplate"
+
 module ActiveAdmin
   module Generators
     class ResourceGenerator < Rails::Generators::NamedBase
       desc "Registers resources with Active Admin"
 
-      def self.source_root
-        @_active_admin_source_root ||= File.expand_path("../templates", __FILE__)
-      end
+      class_option :include_boilerplate, type: :boolean, default: false,
+                                         desc: "Generate boilerplate code for your resource."
+
+      source_root File.expand_path("templates", __dir__)
 
       def generate_config_file
-        template "admin.rb", "app/admin/#{file_path.gsub('/', '_')}.rb"
+        @boilerplate = ActiveAdmin::Generators::Boilerplate.new(class_name)
+        template "admin.rb.erb", "app/admin/#{file_path.tr('/', '_').pluralize}.rb"
       end
 
     end

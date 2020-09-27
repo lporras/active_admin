@@ -1,4 +1,3 @@
-#encoding: utf-8
 ca:
   active_admin:
     dashboard: Tauler
@@ -11,7 +10,7 @@ ca:
     delete_confirmation: "Segur que vols eliminar-ho?"
     new_model: "Crear %{model}"
     edit_model: "Editar %{model}"
-    delete_model: "eliminar %{model}"
+    delete_model: "Eliminar %{model}"
     details: "Detalls de %{model}"
     cancel: "Cancel·lar"
     empty: "Buit"
@@ -32,6 +31,10 @@ ca:
         ends_with: "Acaba amb"
         greater_than: "Més gran que"
         less_than: "Més petit que"
+    status_tag:
+      "yes": "Sí"
+      "no": "No"
+      "unset": "No"
     main_content: "Implementa %{model}#main_content per mostrar contingut."
     logout: "Desconnecta't"
     powered_by: "Powered by %{active_admin} %{version}"
@@ -50,6 +53,8 @@ ca:
     blank_slate:
       content: "Encara no hi ha cap %{resource_name}."
       link: "Crea'n un/a"
+    dropdown_actions:
+      button_label: "accions"
     batch_actions:
       button_label: "les accions per lots"
       default_confirmation: "¿Esteu segur que voleu fer-ho?"
@@ -58,14 +63,12 @@ ca:
         one: "Va destruir amb èxit 1 %{model}"
         other: "Va destruir amb èxit %{count} %{plural_model}"
       selection_toggle_explanation: "(Selecció de Canviar)"
-      link: "crear una"
       action_label: "%{title} seleccionat"
       labels:
         destroy: "esborrar"
     comments:
       body: "Cos"
       author: "autor"
-      title: "comentari"
       add: "Afegeix comentari"
       resource: "Recurs"
       no_comments_yet: "No hi ha comentaris"
@@ -86,6 +89,9 @@ ca:
       unlock:
         title: "Reenvia instruccions per a desbloquejar"
         submit: "Reenvia instruccions per a desbloquejar"
+      resend_confirmation_instructions:
+        title: "Reenviar instruccions de confirmació"
+        submit: "Reenviar instruccions de confirmació"
       links:
         sign_in: "Registrar"
         forgot_your_password: "Heu perdut la contrasenya?"

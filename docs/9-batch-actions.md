@@ -1,3 +1,7 @@
+---
+redirect_from: /docs/9-batch-actions.html
+---
+
 # Batch Actions
 
 By default, the index page provides you a "Batch Action" to quickly delete records,
@@ -21,7 +25,7 @@ your desired batch action on all of them:
 ```ruby
 ActiveAdmin.register Post do
   batch_action :flag do |ids|
-    Post.find(ids).each do |post|
+    batch_action_collection.find(ids).each do |post|
       post.flag! :hot
     end
     redirect_to collection_path, alert: "The posts have been flagged."
@@ -48,7 +52,7 @@ end
 
 # app/admin/post.rb
 ActiveAdmin.register Post do
-  
+
   # Resource level:
   config.batch_actions = false
 end
@@ -131,12 +135,32 @@ batch_action :flag, form: {
 end
 ```
 
-Under the covers this is powered by the JS `ActiveAdmin.modal_dialog` which you can use yourself:
+If you pass a nested array, it will behave just like Formtastic would, with the first
+element being the text displayed and the second element being the value.
+
+```ruby
+batch_action :doit, form: {user: [['Jake',2], ['Mary',3]]} do |ids, inputs|
+  User.find(inputs[:user])
+  # ...
+end
+```
+
+When you have dynamic form inputs you can pass a proc instead:
+
+```ruby
+batch_action :doit, form: -> { {user: User.pluck(:name, :id)} } do |ids, inputs|
+  User.find(inputs[:user])
+  # ...
+end
+```
+
+Under the covers this is powered by the JS `ActiveAdmin.ModalDialog` which you
+can use yourself:
 
 ```coffee
 if $('body.admin_users').length
   $('a[data-prompt]').click ->
-    AA.modal_dialog $(@).data('prompt'), comment: 'textarea',
+    ActiveAdmin.ModalDialog $(@).data('prompt'), comment: 'textarea',
       (inputs)=>
         $.post "/admin/users/#{$(@).data 'id'}/change_state",
           comment: inputs.comment, state: $(@).data('state'),

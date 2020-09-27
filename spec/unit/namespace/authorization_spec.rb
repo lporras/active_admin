@@ -1,15 +1,13 @@
-require 'spec_helper'
+require "rails_helper"
 
-describe ActiveAdmin::Resource, "authorization" do
-
-  let(:app){ ActiveAdmin::Application.new }
-  let(:namespace){ ActiveAdmin::Namespace.new(app, :admin) }
-  let(:auth){ double }
+RSpec.describe ActiveAdmin::Resource, "authorization" do
+  let(:app) { ActiveAdmin::Application.new }
+  let(:namespace) { ActiveAdmin::Namespace.new(app, :admin) }
+  let(:auth) { double }
 
   describe "authorization_adapter" do
-
     it "should return AuthorizationAdapter by default" do
-      expect(app.authorization_adapter).to       eq ActiveAdmin::AuthorizationAdapter
+      expect(app.authorization_adapter).to eq ActiveAdmin::AuthorizationAdapter
       expect(namespace.authorization_adapter).to eq ActiveAdmin::AuthorizationAdapter
     end
 
@@ -22,6 +20,5 @@ describe ActiveAdmin::Resource, "authorization" do
       app.authorization_adapter = auth
       expect(app.authorization_adapter).to eq auth
     end
-
   end
 end

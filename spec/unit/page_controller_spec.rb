@@ -1,5 +1,5 @@
-require 'spec_helper'
+require "rails_helper"
 
-describe ActiveAdmin::PageController do
+RSpec.describe ActiveAdmin::PageController do
   let(:controller) { ActiveAdmin::PageController.new }
 end

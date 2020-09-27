@@ -1,18 +1,17 @@
-require 'inherited_resources'
-
-require 'active_admin/base_controller/authorization'
-require 'active_admin/base_controller/menu'
+require "active_admin/base_controller/authorization"
+require "active_admin/base_controller/menu"
 
 module ActiveAdmin
   # BaseController for ActiveAdmin.
   # It implements ActiveAdmin controllers core features.
   class BaseController < ::InheritedResources::Base
     helper ::ActiveAdmin::ViewHelpers
+    helper_method :env
 
     layout :determine_active_admin_layout
 
-    before_filter :only_render_implemented_actions
-    before_filter :authenticate_active_admin_user
+    before_action :only_render_implemented_actions
+    before_action :authenticate_active_admin_user
 
     class << self
       # Ensure that this method is available for the DSL
@@ -23,17 +22,17 @@ module ActiveAdmin
       attr_accessor :active_admin_config
     end
 
-    # By default Rails will render un-implemented actions when the view exists. Becuase Active
+    include Authorization
+    include Menu
+
+    private
+
+    # By default Rails will render un-implemented actions when the view exists. Because Active
     # Admin allows you to not render any of the actions by using the #actions method, we need
     # to check if they are implemented.
     def only_render_implemented_actions
       raise AbstractController::ActionNotFound unless action_methods.include?(params[:action])
     end
-
-    include Menu
-    include Authorization
-
-    private
 
     # Calls the authentication method as defined in ActiveAdmin.authentication_method
     def authenticate_active_admin_user
@@ -60,7 +59,6 @@ module ActiveAdmin
     end
     helper_method :active_admin_namespace
 
-
     ACTIVE_ADMIN_ACTIONS = [:index, :show, :new, :create, :edit, :update, :destroy]
 
     # Determine which layout to use.
@@ -71,7 +69,12 @@ module ActiveAdmin
     #   2.  If we're rendering a custom action, we'll use the active_admin layout so
     #       that users can render any template inside Active Admin.
     def determine_active_admin_layout
-      ACTIVE_ADMIN_ACTIONS.include?(params[:action].to_sym) ? false : 'active_admin'
+      ACTIVE_ADMIN_ACTIONS.include?(params[:action].to_sym) ? false : "active_admin"
+    end
+
+    def active_admin_root
+      controller, action = active_admin_namespace.root_to.split "#"
+      { controller: controller, action: action }
     end
 
   end

@@ -27,7 +27,7 @@ module ActiveAdmin
     # ```
     #
     # Second, you can pass a block to the tile option which will then be
-    # used as the contents fo the title. The resource being rendered
+    # used as the contents of the title. The resource being rendered
     # is passed in to the block. For Example:
     #
     # ```ruby
@@ -89,7 +89,6 @@ module ActiveAdmin
         @title
       end
 
-
       # Setter method for the configuration of the body
       #
       def body(method = nil, &block)
@@ -113,7 +112,7 @@ module ActiveAdmin
       end
 
       def build_post(post)
-        div :for => post do
+        div for: post do
           resource_selection_cell(post) if active_admin_config.batch_actions.any?
           build_title(post)
           build_body(post)
@@ -123,8 +122,8 @@ module ActiveAdmin
       def build_title(post)
         if @title
           h3 do
-            a(:href => resource_path(post)) do
-             render_method_on_post_or_call_proc post, @title
+            a(href: resource_path(post)) do
+              render_method_on_post_or_call_proc post, @title
             end
           end
         else
@@ -136,7 +135,7 @@ module ActiveAdmin
 
       def build_body(post)
         if @body
-          div :class => 'content' do
+          div class: "content" do
             render_method_on_post_or_call_proc post, @body
           end
         end
@@ -144,8 +143,8 @@ module ActiveAdmin
 
       def render_method_on_post_or_call_proc(post, proc)
         case proc
-        when String,Symbol
-          post.send proc
+        when String, Symbol
+          post.public_send proc
         else
           instance_exec post, &proc
         end

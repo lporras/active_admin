@@ -10,7 +10,7 @@ Feature: Action Item
     Given a configuration of:
     """
     ActiveAdmin.register Post do
-      action_item do
+      action_item :embiggen do
         link_to "Embiggen", '/'
       end
     end
@@ -25,14 +25,14 @@ Feature: Action Item
     Then I should see an action item link to "Embiggen"
 
     When I am on the index page for posts
-    When I follow "New Post"
+    And I follow "New Post"
     Then I should see an action item link to "Embiggen"
 
   Scenario: Create an member action with if clause that returns true
     Given a configuration of:
     """
     ActiveAdmin.register Post do
-      action_item :if => proc{ !current_active_admin_user.nil? } do
+      action_item :embiggen, if: proc{ !current_active_admin_user.nil? } do
         link_to "Embiggen", '/'
       end
     end
@@ -47,14 +47,14 @@ Feature: Action Item
     Then I should see an action item link to "Embiggen"
 
     When I am on the index page for posts
-    When I follow "New Post"
+    And I follow "New Post"
     Then I should see an action item link to "Embiggen"
 
   Scenario: Create an member action with if clause that returns false
     Given a configuration of:
     """
     ActiveAdmin.register Post do
-      action_item :if => proc{ current_active_admin_user.nil? } do
+      action_item :embiggen, if: proc{ current_active_admin_user.nil? } do
         link_to "Embiggen", '/'
       end
     end
@@ -69,5 +69,5 @@ Feature: Action Item
     Then I should not see an action item link to "Embiggen"
 
     When I am on the index page for posts
-    When I follow "New Post"
+    And I follow "New Post"
     Then I should not see an action item link to "Embiggen"

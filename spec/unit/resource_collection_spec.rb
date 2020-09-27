@@ -1,20 +1,20 @@
-require 'spec_helper'
-require 'active_admin/resource_collection'
+require "rails_helper"
+require "active_admin/resource_collection"
 
-describe ActiveAdmin::ResourceCollection do
+RSpec.describe ActiveAdmin::ResourceCollection do
   let(:application) { ActiveAdmin::Application.new }
-  let(:namespace)   { ActiveAdmin::Namespace.new application, :admin }
-  let(:collection)  { ActiveAdmin::ResourceCollection.new }
-  let(:resource)    { double resource_name: "MyResource" }
+  let(:namespace) { ActiveAdmin::Namespace.new application, :admin }
+  let(:collection) { ActiveAdmin::ResourceCollection.new }
+  let(:resource) { double resource_name: "MyResource" }
 
-  it { should respond_to :[]       }
-  it { should respond_to :add      }
-  it { should respond_to :each     }
-  it { should respond_to :has_key? }
-  it { should respond_to :keys     }
-  it { should respond_to :values   }
-  it { should respond_to :size     }
-  it { should respond_to :to_a     }
+  it { is_expected.to respond_to :[] }
+  it { is_expected.to respond_to :add }
+  it { is_expected.to respond_to :each }
+  it { is_expected.to respond_to :has_key? }
+  it { is_expected.to respond_to :keys }
+  it { is_expected.to respond_to :values }
+  it { is_expected.to respond_to :size }
+  it { is_expected.to respond_to :to_a }
 
   it "should have no resources when new" do
     expect(collection).to be_empty
@@ -22,7 +22,7 @@ describe ActiveAdmin::ResourceCollection do
 
   it "should be enumerable" do
     collection.add(resource)
-    collection.each{ |r| expect(r).to eq resource }
+    collection.each { |r| expect(r).to eq resource }
   end
 
   it "should return the available keys" do
@@ -51,22 +51,22 @@ describe ActiveAdmin::ResourceCollection do
     end
 
     it "shouldn't allow a resource name mismatch to occur" do
-      expect {
+      expect do
         ActiveAdmin.register Category
         ActiveAdmin.register Post, as: "Category"
-      }.to raise_error ActiveAdmin::ResourceCollection::ConfigMismatch
+      end.to raise_error ActiveAdmin::ResourceCollection::ConfigMismatch
     end
 
     it "shouldn't allow a Page/Resource mismatch to occur" do
-      expect {
+      expect do
         ActiveAdmin.register User
-        ActiveAdmin.register_page 'User'
-      }.to raise_error ActiveAdmin::ResourceCollection::IncorrectClass
+        ActiveAdmin.register_page "User"
+      end.to raise_error ActiveAdmin::ResourceCollection::IncorrectClass
     end
 
     describe "should store both renamed and non-renamed resources" do
       let(:resource) { ActiveAdmin::Resource.new namespace, Category }
-      let(:renamed)  { ActiveAdmin::Resource.new namespace, Category, as: "Subcategory" }
+      let(:renamed) { ActiveAdmin::Resource.new namespace, Category, as: "Subcategory" }
 
       it "when the renamed version is added first" do
         collection.add renamed
@@ -83,12 +83,12 @@ describe ActiveAdmin::ResourceCollection do
   end
 
   describe "#[]" do
-    let(:resource)              { ActiveAdmin::Resource.new namespace, resource_class }
-    let(:inherited_resource)    { ActiveAdmin::Resource.new namespace, inherited_resource_class }
+    let(:resource) { ActiveAdmin::Resource.new namespace, resource_class }
+    let(:inherited_resource) { ActiveAdmin::Resource.new namespace, inherited_resource_class }
 
-    let(:resource_class)           { User }
+    let(:resource_class) { User }
     let(:inherited_resource_class) { Publisher }
-    let(:unregistered_class)       { Category }
+    let(:unregistered_class) { Category }
 
     context "with resources" do
       before do
@@ -133,7 +133,7 @@ describe ActiveAdmin::ResourceCollection do
 
     context "with a renamed resource" do
       let(:renamed_resource) { ActiveAdmin::Resource.new namespace, resource_class, as: name }
-      let(:name)             { "Administrators" }
+      let(:name) { "Administrators" }
 
       before do
         collection.add renamed_resource
@@ -151,8 +151,24 @@ describe ActiveAdmin::ResourceCollection do
         expect(collection[name]).to eq renamed_resource
       end
     end
+
+    context "with a resource and a renamed resource added in disorder" do
+      let(:resource) { ActiveAdmin::Resource.new namespace, resource_class }
+      let(:renamed_resource) do
+        ActiveAdmin::Resource.new namespace, resource_class, as: name
+      end
+      let(:name) { "Administrators" }
+
+      before do
+        collection.add renamed_resource
+        collection.add resource
+      end
+
+      it "should find a resource by class when there are two resources with that class" do
+        expect(collection[resource_class]).to eq resource
+      end
+    end
   end
 
-  pending "specs for subclasses of Page and Resource"
-
+  skip "specs for subclasses of Page and Resource"
 end

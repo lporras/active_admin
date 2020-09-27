@@ -4,11 +4,11 @@ module ActiveAdmin
     class SiteTitle < Component
 
       def tag_name
-        'h1'
+        "h1"
       end
 
       def build(namespace)
-        super(:id => "site_title")
+        super(id: "site_title")
         @namespace = namespace
 
         if site_title_link?
@@ -22,8 +22,8 @@ module ActiveAdmin
         @namespace.site_title_link.present?
       end
 
-      def site_title_image?
-        @namespace.site_title_image.present?
+      def site_title_image
+        @site_title_image ||= @namespace.site_title_image(helpers)
       end
 
       private
@@ -33,7 +33,7 @@ module ActiveAdmin
       end
 
       def site_title_content
-        if site_title_image?
+        if site_title_image.present?
           title_image
         else
           title_text
@@ -41,12 +41,11 @@ module ActiveAdmin
       end
 
       def title_text
-        helpers.render_or_call_method_or_proc_on(self, @namespace.site_title)
+        @title_text ||= @namespace.site_title(helpers)
       end
 
       def title_image
-        path = helpers.render_or_call_method_or_proc_on(self, @namespace.site_title_image)
-        helpers.image_tag(path, :id => "site_title_image", :alt => @namespace.site_title)
+        helpers.image_tag(site_title_image, id: "site_title_image", alt: title_text)
       end
 
     end

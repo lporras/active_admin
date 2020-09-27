@@ -1,53 +1,24 @@
-# Minimal example of a decorator
-require_dependency 'post'
+require "draper"
 
-# DelegateClass(Post) does not delegate attribute methods
-# in some environments:
-# http://travis-ci.org/#!/gregbell/active_admin/jobs/2021466
-#
-class PostDecorator < SimpleDelegator
-  delegate :id, :to => :__getobj__
+class PostDecorator < Draper::Decorator
+  decorates :post
+  delegate_all
 
-  def self.decorate(object)
-    new(object)
+  # @param attributes [Hash]
+  def assign_attributes(attributes)
+    object.assign_attributes attributes.except(:virtual_title)
+    self.virtual_title = attributes.fetch(:virtual_title) if attributes.key?(:virtual_title)
   end
 
-  def self.decorate_collection(collection)
-    DecoratedEnumerableProxy.new(collection)
+  def virtual_title
+    object.title
   end
 
-  def self.model_name
-    ActiveModel::Name.new Post
+  def virtual_title=(virtual_title)
+    object.title = virtual_title
   end
 
   def decorator_method
-    'A method only available on the decorator'
-  end
-
-  # Minimal example of decorating a collection.
-  # A full example can be found in the draper project:
-  # https://github.com/jcasimir/draper/blob/master/lib/draper/decorated_enumerable_proxy.rb
-  class DecoratedEnumerableProxy < DelegateClass(ActiveRecord::Relation)
-    include Enumerable
-
-    delegate :as_json, :collect, :map, :each, :[], :all?, :include?, :first, :last, :shift, :to => :decorated_collection
-
-    def klass
-      PostDecorator
-    end
-
-    def wrapped_collection
-      __getobj__
-    end
-
-    def decorated_collection
-      @decorated_collection ||= wrapped_collection.collect { |member| klass.decorate(member) }
-    end
-    alias_method :to_ary, :decorated_collection
-
-    def each(&blk)
-      to_ary.each(&blk)
-    end
+    "A method only available on the decorator"
   end
 end
-

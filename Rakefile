@@ -1,25 +1,27 @@
-require "bundler"
-require 'rake'
-Bundler.setup
-Bundler::GemHelper.install_tasks
+require "bundler/gem_tasks"
 
-def cmd(command)
-  puts command
-  raise unless system command
+import "tasks/gemfiles.rake"
+import "tasks/local.rake"
+import "tasks/test.rake"
+
+gemfile = ENV["BUNDLE_GEMFILE"]
+
+if gemfile.nil? || File.expand_path(gemfile) == File.expand_path("Gemfile")
+  import "tasks/changelog.rake"
+  import "tasks/docs.rake"
+  import "tasks/lint.rake"
+  import "tasks/release.rake"
 end
 
-require File.expand_path('../spec/support/detect_rails_version', __FILE__)
+task default: :test
 
-# Import all our rake tasks
-FileList['tasks/**/*.rake'].each { |task| import task }
+require "jasmine"
+load "jasmine/tasks/jasmine.rake"
 
-task :default => :test
+task :console do
+  require "irb"
+  require "irb/completion"
 
-begin
-  require 'jasmine'
-  load 'jasmine/tasks/jasmine.rake'
-rescue LoadError
-  task :jasmine do
-    abort "Jasmine is not available. In order to run jasmine, you must: (sudo) gem install jasmine"
-  end
+  ARGV.clear
+  IRB.start
 end

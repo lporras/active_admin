@@ -2,14 +2,13 @@ module ActiveAdmin
 
   # Default Authorization permissions for Active Admin
   module Authorization
-    READ    = :read
-    CREATE  = :create
-    UPDATE  = :update
+    READ = :read
+    CREATE = :create
+    UPDATE = :update
     DESTROY = :destroy
   end
 
   Auth = Authorization
-
 
   # Active Admin's default authorization adapter. This adapter returns true
   # for all requests to `#authorized?`. It should be the starting point for
@@ -18,7 +17,6 @@ module ActiveAdmin
   # To view an example subclass, check out `ActiveAdmin::CanCanAdapter`
   class AuthorizationAdapter
     attr_reader :resource, :user
-
 
     # Initialize a new authorization adapter. This happens on each and
     # every request to a controller.
@@ -47,13 +45,12 @@ module ActiveAdmin
     #        the class of the subject also. For example, Active Admin uses the class
     #        of the resource to decide if the resource should be displayed in the
     #        global navigation. To deal with this nicely in a case statement, take
-    #        a look at `#normalized(klasss)`
+    #        a look at `#normalized(klass)`
     #
-    # @returns [Boolean]
+    # @return [Boolean]
     def authorized?(action, subject = nil)
       true
     end
-
 
     # A hook method for authorization libraries to scope the collection. By
     # default, we just return the same collection. The returned scope is used
@@ -66,7 +63,7 @@ module ActiveAdmin
     #        one of the `ActiveAdmin::Auth::*` symbols. Defaults to `Auth::READ` if
     #        no action passed in.
     #
-    # @returns [ActiveRecord::Relation] A new collection, scoped to the
+    # @return [ActiveRecord::Relation] A new collection, scoped to the
     #          objects that the current user has access to.
     def scope_collection(collection, action = Auth::READ)
       collection

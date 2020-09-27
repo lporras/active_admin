@@ -1,79 +1,75 @@
-desc "Creates a test rails app for the specs to run against"
-task :setup do
-  require 'rails/version'
-  system("mkdir spec/rails") unless File.exists?("spec/rails")
-  system "bundle exec rails new spec/rails/rails-#{Rails::VERSION::STRING} -m spec/support/rails_template.rb"
-  Rake::Task['parallel:after_setup_hook'].invoke
-end
+desc "Run the full suite using parallel_tests to run on multiple cores"
+task test: [:setup, :spec, :cucumber]
 
-desc "Run the full suite using 1 core"
-task test: ['spec:unit', 'spec:integration', 'cucumber', 'cucumber:class_reloading']
+desc "Create a test rails app for the parallel specs to run against if it doesn't exist already"
+task setup: :"setup:create"
 
-require 'coveralls/rake/task'
-Coveralls::RakeTask.new
-task test_with_coveralls: [:test, 'coveralls:push']
+namespace :setup do
+  desc "Forcefully create a test rails app for the parallel specs to run against"
+  task :force, [:rails_env, :template] => [:require, :rm, :run]
 
-namespace :test do
+  desc "Create a test rails app for the parallel specs to run against if it doesn't exist already"
+  task :create, [:rails_env, :template] => [:require, :run]
 
-  def run_tests_against(*versions)
-    current_version = detect_rails_version if File.exists?("Gemfile.lock")
+  desc "Makes test app creation code available"
+  task :require do
+    if ENV["COVERAGE"] == "true"
+      require "simplecov"
 
-    versions.each do |version|
-      puts
-      puts "== Using Rails #{version}"
-
-      cmd "./script/use_rails #{version}"
-      cmd "bundle exec rspec spec"
-      cmd "bundle exec cucumber features"
-      cmd "bundle exec cucumber -p class-reloading features"
+      SimpleCov.command_name "test app creation"
     end
 
-    cmd "./script/use_rails #{current_version}" if current_version
+    require_relative "test_application"
   end
 
-  desc "Run the full suite against the important versions of rails"
-  task :major_supported_rails do
-    run_tests_against *TRAVIS_RAILS_VERSIONS
+  desc "Create a test rails app for the parallel specs to run against"
+  task :run, [:rails_env, :template] do |_t, opts|
+    ActiveAdmin::TestApplication.new(opts).soft_generate
   end
 
-  desc "Alias for major_supported_rails"
-  task :all => :major_supported_rails
+  task :rm, [:rails_env, :template] do |_t, opts|
+    test_app = ActiveAdmin::TestApplication.new(opts)
 
+    FileUtils.rm_rf test_app.app_dir
+  end
 end
 
-require 'rspec/core/rake_task'
-
-RSpec::Core::RakeTask.new(:spec)
+task spec: :"spec:all"
 
 namespace :spec do
+  desc "Run all specs"
+  task all: [:regular, :filesystem_changes]
 
-  desc "Run the unit specs"
-  RSpec::Core::RakeTask.new(:unit) do |t|
-    t.pattern = "spec/unit/**/*_spec.rb"
+  desc "Run the standard specs in parallel"
+  task :regular do
+    sh("bin/parallel_rspec spec/")
   end
 
-  desc "Run the integration specs"
-  RSpec::Core::RakeTask.new(:integration) do |t|
-    t.pattern = "spec/integration/**/*_spec.rb"
+  desc "Run the specs that change the filesystem sequentially"
+  task :filesystem_changes do
+    sh({ "RSPEC_FILESYSTEM_CHANGES" => "true" }, "bin/rspec")
   end
-
 end
 
-
-require 'cucumber/rake/task'
-
-Cucumber::Rake::Task.new(:cucumber) do |t|
-  t.profile = 'default'
-end
+desc "Run the cucumber scenarios in parallel"
+task cucumber: :"cucumber:all"
 
 namespace :cucumber do
+  desc "Run all cucumber suites"
+  task all: [:regular, :filesystem_changes, :reloading]
 
-  Cucumber::Rake::Task.new(:wip, "Run the cucumber scenarios with the @wip tag") do |t|
-    t.profile = 'wip'
+  desc "Run the standard cucumber scenarios in parallel"
+  task :regular do
+    sh("bin/parallel_cucumber features/")
   end
 
-  Cucumber::Rake::Task.new(:class_reloading, "Run the cucumber scenarios that test reloading") do |t|
-    t.profile = 'class-reloading'
+  desc "Run the cucumber scenarios that change the filesystem sequentially"
+  task :filesystem_changes do
+    sh("bin/cucumber --profile filesystem-changes")
   end
 
+  desc "Run the cucumber scenarios that test reloading"
+  task :reloading do
+    sh("bin/cucumber --profile class-reloading")
+  end
 end

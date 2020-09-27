@@ -1,6 +1,10 @@
+---
+redirect_from: /docs/6-show-pages.html
+---
 # Customize the Show Page
 
-The show block is rendered within the context of the view and uses [Arbre](https://github.com/gregbell/arbre) syntax.
+The show block is rendered within the context of the view and uses
+[Arbre](https://github.com/activeadmin/arbre) syntax.
 
 With the `show` block, you can render anything you want.
 
@@ -21,7 +25,7 @@ You can render a partial at any point:
 ActiveAdmin.register Post do
   show do
     # renders app/views/admin/posts/_some_partial.html.erb
-    render 'some_partial'
+    render 'some_partial', { post: post }
   end
 end
 ```
@@ -33,7 +37,7 @@ ActiveAdmin.register Ad do
   show do
     attributes_table do
       row :title
-      row :image do
+      row :image do |ad|
         image_tag ad.image.url
       end
     end
@@ -70,7 +74,7 @@ ActiveAdmin.register Book do
       row :title
       row :author
       row :publisher
-      row('Published?') { |b| status_tag b.published? ? 'Yes' : 'No' }
+      row('Published?') { |b| status_tag b.published? }
     end
   end
 end

@@ -6,7 +6,7 @@ Feature: Index - Page Title
     Given an index configuration of:
     """
       ActiveAdmin.register Post do
-        index :title => "Awesome Title"
+        index title: "Awesome Title"
       end
     """
     Then I should see the page title "Awesome Title"
@@ -15,7 +15,7 @@ Feature: Index - Page Title
     Given an index configuration of:
     """
       ActiveAdmin.register Post do
-        index :title => proc{ 'Custom title from proc' }
+        index title: proc{ 'Custom title from proc' }
       end
     """
     Then I should see the page title "Custom title from proc"
@@ -24,7 +24,18 @@ Feature: Index - Page Title
     Given an index configuration of:
     """
       ActiveAdmin.register Post do
-        index :title => proc{ "List of #{resource_class.model_name.plural}" }
+        index title: proc{ "List of #{resource_class.model_name.plural}" }
+      end
+    """
+    Then I should see the page title "List of posts"
+
+  Scenario: Set the title in controller
+    Given an index configuration of:
+    """
+      ActiveAdmin.register Post do
+        controller do
+          before_action { @page_title = "List of #{resource_class.model_name.plural}" }
+        end
       end
     """
     Then I should see the page title "List of posts"
